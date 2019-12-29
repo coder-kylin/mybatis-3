@@ -188,12 +188,23 @@ public class XPathParser {
     this.variables = variables;
   }
 
+  /**
+   * eval族方法:用于获取 String Boolean Integer Long Float Double Short类型的元素（Element）的值
+   */
   public String evalString(String expression) {
     return evalString(document, expression);
   }
 
+  /**
+   *
+   * @param root document的节点数
+   * @param expression 解析路径 如：/class/student
+   * @return String 值
+   */
   public String evalString(Object root, String expression) {
+    //1.获取值 returnType 传入XPathConstants.STRING 表示返回的结果是String类型的值
     String result = (String) evaluate(expression, root, XPathConstants.STRING);
+    //2.基于variables替换动态值，如果result为动态值（里面有判断${}这样的就代表是动态值）
     result = PropertyParser.parse(result, variables);
     return result;
   }
@@ -206,6 +217,9 @@ public class XPathParser {
     return (Boolean) evaluate(expression, root, XPathConstants.BOOLEAN);
   }
 
+  /**
+   * 其他类型就从evalString中获取后再使用 引用类型进行类型转换即可
+   */
   public Short evalShort(String expression) {
     return evalShort(document, expression);
   }
@@ -246,14 +260,21 @@ public class XPathParser {
     return (Double) evaluate(expression, root, XPathConstants.NUMBER);
   }
 
+  /**
+   * 根据解析路径获取所有的节点
+   * @param expression 解析路径 如 /class/student
+   * @return List<XNode>
+   */
   public List<XNode> evalNodes(String expression) {
     return evalNodes(document, expression);
   }
 
   public List<XNode> evalNodes(Object root, String expression) {
     List<XNode> xnodes = new ArrayList<>();
+    //获取XML配置文件中的节点和值
     NodeList nodes = (NodeList) evaluate(expression, root, XPathConstants.NODESET);
     for (int i = 0; i < nodes.getLength(); i++) {
+      //替换动态值（替换被标记为${}的值，换上真实的值）
       xnodes.add(new XNode(this, nodes.item(i), variables));
     }
     return xnodes;
@@ -268,6 +289,7 @@ public class XPathParser {
     if (node == null) {
       return null;
     }
+    //替换动态值
     return new XNode(this, node, variables);
   }
 

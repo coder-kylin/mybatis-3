@@ -50,6 +50,14 @@ public class PropertyParser {
     // Prevent Instantiation
   }
 
+  /**
+   * 基于variables替换动态值（如果result为动态值）
+   * 这就是mybatis如何替换XML中动态值的实现方式
+   * todo 谁替换谁？  还没学习
+   * @param string
+   * @param variables
+   * @return String
+   */
   public static String parse(String string, Properties variables) {
     VariableTokenHandler handler = new VariableTokenHandler(variables);
     GenericTokenParser parser = new GenericTokenParser("${", "}", handler);
