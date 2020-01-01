@@ -15,30 +15,56 @@
  */
 package org.apache.ibatis.parsing;
 
+
 /**
+ * 通用的 Token 解析器 备注：这里的token不是代表登录时候获取的token，似乎是${}这种东西
  * @author Clinton Begin
  */
 public class GenericTokenParser {
 
+
+  /**
+   * 前缀
+   */
   private final String openToken;
+
+  /**
+   * 后缀
+   */
   private final String closeToken;
+
+  /**
+   * Token的真实解析器（因为这个类【通用解析器】是更高一层次的封装，所以成员变量里面带真实的解析处理器）
+   */
   private final TokenHandler handler;
 
+
+  /**
+   * 构造器
+   */
   public GenericTokenParser(String openToken, String closeToken, TokenHandler handler) {
     this.openToken = openToken;
     this.closeToken = closeToken;
     this.handler = handler;
   }
 
+  /**
+   * 解析 text 获取需要的内容
+   * todo 还没好好完，主要作用是：去除掉前缀开头和尾缀结束 获取真实的expression
+   * @param text
+   * @return String
+   */
   public String parse(String text) {
+    //0.非空判断
     if (text == null || text.isEmpty()) {
       return "";
     }
-    // search open token
+    //1.判断是否以符合条件的前缀开始，如果不是 则直接返回文本--不解析
     int start = text.indexOf(openToken);
     if (start == -1) {
       return text;
     }
+    //2.真实解析开始 转换成char数组 一个一个字符看
     char[] src = text.toCharArray();
     int offset = 0;
     final StringBuilder builder = new StringBuilder();
@@ -84,5 +110,12 @@ public class GenericTokenParser {
       builder.append(src, offset, src.length - offset);
     }
     return builder.toString();
+  }
+
+  public static void main(String []args) {
+    GenericTokenParser parser = new GenericTokenParser("#{", "}", null);
+    String text = "#{abc}";
+    String res = parser.parse(text);
+    System.out.println(res);
   }
 }

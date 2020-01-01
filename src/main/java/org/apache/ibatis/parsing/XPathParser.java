@@ -65,13 +65,15 @@ public class XPathParser {
 
   /**
    * XML实体解析器
-   * org.xml.sax.EntityResolver对象
+   * org.xml.sax.EntityResolver对象（非mybatis编写的接口）
    * 默认情况下，对XML进行校验时会基于 XML 文档开始位置指定的 DTD 文件或 XSD 文件。
    * 例如说，解析 mybatis-config.xml 配置文件时，会加载 http://mybatis.org/dtd/mybatis-3-config.dtd 这个 DTD 文件。
    * 但是，如果每个应用启动都从网络加载该 DTD 文件，势必在弱网络下体验非常下，甚至说应用部署在无网络的环境下，
    * 还会导致下载不下来，那么就会出现 XML 校验失败的情况。
    * 所以，在实际场景下，MyBatis 自定义了 EntityResolver 的实现，达到使用本地 DTD 文件，从而避免下载网络 DTD 文件的效果
-   * todo 说明真正的解析不在这里，这里只是一个更高层次的封装?
+   *
+   * important： 解析是在xpath中做了，这个类是org自带的接口，mybatis自定义XMLMapperEntityResolver类实现EntityResolver
+   * 主要用途就是：加载本地mybatis-3-config.dtd 和 mybatis-3-mapper.dtd 这两个 DTD 文件（校验文件）
    */
   private EntityResolver entityResolver;
 

@@ -18,6 +18,8 @@ package org.apache.ibatis.parsing;
 import java.util.Properties;
 
 /**
+ * 动态属性解析器
+ * 定义动态属性解析的规则
  * @author Clinton Begin
  * @author Kazuki Shimizu
  */
@@ -46,6 +48,9 @@ public class PropertyParser {
   private static final String ENABLE_DEFAULT_VALUE = "false";
   private static final String DEFAULT_VALUE_SEPARATOR = ":";
 
+  /**
+   * 静态工厂类 不提供构造方法
+   */
   private PropertyParser() {
     // Prevent Instantiation
   }
@@ -53,17 +58,34 @@ public class PropertyParser {
   /**
    * 基于variables替换动态值（如果result为动态值）
    * 这就是mybatis如何替换XML中动态值的实现方式
-   * todo 谁替换谁？  还没学习
+   * 将variables替换从xml获取的死板的值
    * @param string
    * @param variables
    * @return String
    */
   public static String parse(String string, Properties variables) {
+    //1.创建VariableTokenHandler对象【todo 存在的意义】
     VariableTokenHandler handler = new VariableTokenHandler(variables);
+    //2.创建parser解析对象
     GenericTokenParser parser = new GenericTokenParser("${", "}", handler);
+    //3.解析
     return parser.parse(string);
   }
+  /**
+   * 测试结果： res = kylin
+   * 很明显 按照规则---将动态值kylin替换${zhuoqilin}（从XML获取的固定值）
+   */
+  public static void main(String []args){
+    Properties variables = new Properties();
+    variables.setProperty("username", "kylin");
+    String res = parse("${zhuoqilin}", variables);
+    System.out.println(res);
+  }
 
+
+  /**
+   * 私有静态内部类
+   */
   private static class VariableTokenHandler implements TokenHandler {
     private final Properties variables;
     private final boolean enableDefaultValue;
@@ -79,6 +101,12 @@ public class PropertyParser {
       return (variables == null) ? defaultValue : variables.getProperty(key, defaultValue);
     }
 
+
+    /**
+     * todo 这个方法是用来干嘛的？
+     * @param
+     * @return
+     */
     @Override
     public String handleToken(String content) {
       if (variables != null) {
