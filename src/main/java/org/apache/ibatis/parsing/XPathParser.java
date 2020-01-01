@@ -64,7 +64,7 @@ public class XPathParser {
   private boolean validation;
 
   /**
-   * XML实体解析器
+   * XML实体处理器
    * org.xml.sax.EntityResolver对象（非mybatis编写的接口）
    * 默认情况下，对XML进行校验时会基于 XML 文档开始位置指定的 DTD 文件或 XSD 文件。
    * 例如说，解析 mybatis-config.xml 配置文件时，会加载 http://mybatis.org/dtd/mybatis-3-config.dtd 这个 DTD 文件。
