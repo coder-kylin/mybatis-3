@@ -50,9 +50,10 @@ public class GenericTokenParser {
 
   /**
    * 解析 text 获取需要的内容
-   * todo 还没好好完，主要作用是：去除掉前缀开头和尾缀结束 获取真实的expression
+   * 方法的用途；
+   *  更抽象一层次的封装，比如参数非空判断，前缀后缀是否符合规范等， 内部调用了各个真实解析器的解析方法
    * @param text
-   * @return String
+   * @return String 解析后的结果
    */
   public String parse(String text) {
     //0.非空判断
@@ -66,7 +67,7 @@ public class GenericTokenParser {
     }
     //2.真实解析开始 转换成char数组 一个一个字符看
     char[] src = text.toCharArray();
-    int offset = 0;
+    int offset = 0; //？作何使用
     final StringBuilder builder = new StringBuilder();
     StringBuilder expression = null;
     while (start > -1) {
@@ -110,12 +111,5 @@ public class GenericTokenParser {
       builder.append(src, offset, src.length - offset);
     }
     return builder.toString();
-  }
-
-  public static void main(String []args) {
-    GenericTokenParser parser = new GenericTokenParser("#{", "}", null);
-    String text = "#{abc}";
-    String res = parser.parse(text);
-    System.out.println(res);
   }
 }

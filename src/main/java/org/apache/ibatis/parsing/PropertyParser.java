@@ -33,17 +33,18 @@ public class PropertyParser {
   public static final String KEY_DEFAULT_VALUE_SEPARATOR = KEY_PREFIX + "default-value-separator";
 
   /**
-   * 是否开启默认值功能（默认不开启）。默认为 {@link #ENABLE_DEFAULT_VALUE}
+   * 是否开启默认值功能（默认不开启）
    */
   private static final String ENABLE_DEFAULT_VALUE = "false";
 
   /**
-   * 默认值的分隔符（默认为“:”）。默认为 {@link #KEY_DEFAULT_VALUE_SEPARATOR} ，即 ":" 。
+   * 默认值的分隔符（默认为“:”）
    */
   private static final String DEFAULT_VALUE_SEPARATOR = ":";
 
   /**
-   * 静态工厂类 不提供构造方法
+   * PropertyParser的使用更像静态工厂类；不提供构造方法，而由上一层GenericTokenParser进行调用
+   * 不被人调用，声明的原因大概是为了避免默认构造函数被人使用吧
    */
   private PropertyParser() {
     // Prevent Instantiation
@@ -58,7 +59,7 @@ public class PropertyParser {
    * @return String
    */
   public static String parse(String string, Properties variables) {
-    //1.创建VariableTokenHandler对象----真实的动态参数handler对象
+    //1.创建VariableTokenHandler对象----真实的动态参数handler对象（静态内部类）
     VariableTokenHandler handler = new VariableTokenHandler(variables);
     //2.创建parser解析对象 ----再上一层次的封装【通用的解析器】 important：这里说明，参数动态替换必须要使用${}
     GenericTokenParser parser = new GenericTokenParser("${", "}", handler);
@@ -114,11 +115,11 @@ public class PropertyParser {
      * 处理 token
      * 逻辑：
      *  1.判断variables（动态值）是否为空；空则无法替换，直接包装成原来的样子${content}返回；不为空则进入2
-     *  2.判断是否启动默认值方式，若不启动，则直接从variables中的key中拿取（variables自己保证有对应的值），若启动进入3
+     *  2.判断是否启动默认值方式，若不启动，则直接从variables中的key中拿取（如果variables中没有则走1），若启动进入3
      *  3.获取到分隔符（在构造器中确保了如果variables有则取variables的，否则使用默认:）,获取到${key:value}的value部分，
      *  与variables进行比较，如果variables中有则替换，否则直接使用value
      * @param content token字符串
-     * @return String 解析后的结果 todo 解析成什么样？
+     * @return String 动态替换后的结果
      */
     @Override
     public String handleToken(String content) {
@@ -149,7 +150,8 @@ public class PropertyParser {
         }
       }
 
-      //Properties对象 variables为空，无法进行动态值替换 返回${content}
+      //1.Properties对象 variables为空，无法进行动态值替换 返回${content}
+      //2.或者Properties对象 没有对应的key的时候
       return "${" + content + "}";
     }
   }

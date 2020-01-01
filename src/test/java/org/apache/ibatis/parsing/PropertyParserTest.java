@@ -35,14 +35,20 @@ class PropertyParserTest {
     props.setProperty("orderColumn", "member_id");
     props.setProperty("a:b", "c");
     Assertions.assertThat(PropertyParser.parse("${key}", props)).isEqualTo("value");
-    System.out.println(PropertyParser.parse("{key}", props)); //value
-    Assertions.assertThat(PropertyParser.parse("${key:aaaa}", props)).isEqualTo("value");
-    Assertions.assertThat(PropertyParser.parse("SELECT * FROM ${tableName:users} ORDER BY ${orderColumn:id}", props)).isEqualTo("SELECT * FROM members ORDER BY member_id");
+    System.out.println(PropertyParser.parse("{key}", props)); //结果是{key}  因为不符合动态参数替换${}的规则
+    Assertions.assertThat(PropertyParser.parse("${key:aaaa}", props)).isEqualTo("value");  //value
+    Assertions.assertThat(PropertyParser.parse("SELECT * FROM ${tableName:users} ORDER BY ${orderColumn:id}", props))
+      .isEqualTo("SELECT * FROM members ORDER BY member_id"); //true
 
+    //不使用默认值
     props.setProperty(PropertyParser.KEY_ENABLE_DEFAULT_VALUE, "false");
+    //true
     Assertions.assertThat(PropertyParser.parse("${a:b}", props)).isEqualTo("c");
 
+    //移除这个值---则说明使用的是默认的false 返回true
     props.remove(PropertyParser.KEY_ENABLE_DEFAULT_VALUE);
+    String flag = PropertyParser.parse("${a:b}", props);
+    System.out.println(flag);
     Assertions.assertThat(PropertyParser.parse("${a:b}", props)).isEqualTo("c");
 
   }
@@ -51,14 +57,17 @@ class PropertyParserTest {
   void notReplace() {
     Properties props = new Properties();
     props.setProperty(PropertyParser.KEY_ENABLE_DEFAULT_VALUE, "true");
-    Assertions.assertThat(PropertyParser.parse("${key}", props)).isEqualTo("${key}");
-    Assertions.assertThat(PropertyParser.parse("${key}", null)).isEqualTo("${key}");
+    System.out.println(PropertyParser.parse("${key}", props)); //${key} props中无值可替代
+    Assertions.assertThat(PropertyParser.parse("${key}", props)).isEqualTo("${key}"); //true
+    Assertions.assertThat(PropertyParser.parse("${key}", null)).isEqualTo("${key}"); //true
 
-    props.setProperty(PropertyParser.KEY_ENABLE_DEFAULT_VALUE, "false");
-    Assertions.assertThat(PropertyParser.parse("${a:b}", props)).isEqualTo("${a:b}");
+    props.setProperty(PropertyParser.KEY_ENABLE_DEFAULT_VALUE, "false"); //指明不使用默认值
+    Assertions.assertThat(PropertyParser.parse("${a:b}", props)).isEqualTo("${a:b}"); //true
+    System.out.println(PropertyParser.parse("${a:b}", props));
 
-    props.remove(PropertyParser.KEY_ENABLE_DEFAULT_VALUE);
-    Assertions.assertThat(PropertyParser.parse("${a:b}", props)).isEqualTo("${a:b}");
+    props.remove(PropertyParser.KEY_ENABLE_DEFAULT_VALUE);//移除之后 使用的是自带的false
+    Assertions.assertThat(PropertyParser.parse("${a:b}", props)).isEqualTo("${a:b}"); //true
+    System.out.println(PropertyParser.parse("${a:b}", props));
 
   }
 
@@ -66,23 +75,27 @@ class PropertyParserTest {
   void applyDefaultValue() {
     Properties props = new Properties();
     props.setProperty(PropertyParser.KEY_ENABLE_DEFAULT_VALUE, "true");
-    Assertions.assertThat(PropertyParser.parse("${key:default}", props)).isEqualTo("default");
-    Assertions.assertThat(PropertyParser.parse("SELECT * FROM ${tableName:users} ORDER BY ${orderColumn:id}", props)).isEqualTo("SELECT * FROM users ORDER BY id");
-    Assertions.assertThat(PropertyParser.parse("${key:}", props)).isEmpty();
-    Assertions.assertThat(PropertyParser.parse("${key: }", props)).isEqualTo(" ");
-    Assertions.assertThat(PropertyParser.parse("${key::}", props)).isEqualTo(":");
+    Assertions.assertThat(PropertyParser.parse("${key:default}", props)).isEqualTo("default"); //true
+    Assertions.assertThat(PropertyParser.parse("SELECT * FROM ${tableName:users} ORDER BY ${orderColumn:id}", props))
+      .isEqualTo("SELECT * FROM users ORDER BY id"); //true
+    Assertions.assertThat(PropertyParser.parse("${key:}", props)).isEmpty(); //true
+    Assertions.assertThat(PropertyParser.parse("${key: }", props)).isEqualTo(" "); //true
+    Assertions.assertThat(PropertyParser.parse("${key::}", props)).isEqualTo(":");//true
   }
 
   @Test
   void applyCustomSeparator() {
     Properties props = new Properties();
     props.setProperty(PropertyParser.KEY_ENABLE_DEFAULT_VALUE, "true");
-    props.setProperty(PropertyParser.KEY_DEFAULT_VALUE_SEPARATOR, "?:");
-    Assertions.assertThat(PropertyParser.parse("${key?:default}", props)).isEqualTo("default");
-    Assertions.assertThat(PropertyParser.parse("SELECT * FROM ${schema?:prod}.${tableName == null ? 'users' : tableName} ORDER BY ${orderColumn}", props)).isEqualTo("SELECT * FROM prod.${tableName == null ? 'users' : tableName} ORDER BY ${orderColumn}");
-    Assertions.assertThat(PropertyParser.parse("${key?:}", props)).isEmpty();
-    Assertions.assertThat(PropertyParser.parse("${key?: }", props)).isEqualTo(" ");
-    Assertions.assertThat(PropertyParser.parse("${key?::}", props)).isEqualTo(":");
+    props.setProperty(PropertyParser.KEY_DEFAULT_VALUE_SEPARATOR, "?:"); //分隔符  ?:
+    Assertions.assertThat(PropertyParser.parse("${key?:default}", props)).isEqualTo("default"); //true
+    //一个key中只替换第一个
+    Assertions.assertThat(PropertyParser.parse(
+      "SELECT * FROM ${schema?:prod}.${tableName == null ? 'users' : tableName} ORDER BY ${orderColumn}", props))
+      .isEqualTo("SELECT * FROM prod.${tableName == null ? 'users' : tableName} ORDER BY ${orderColumn}");//true
+    Assertions.assertThat(PropertyParser.parse("${key?:}", props)).isEmpty(); //true
+    Assertions.assertThat(PropertyParser.parse("${key?: }", props)).isEqualTo(" "); //true
+    Assertions.assertThat(PropertyParser.parse("${key?::}", props)).isEqualTo(":");//true
   }
 
 }
