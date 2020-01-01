@@ -26,26 +26,20 @@ import java.util.Properties;
 public class PropertyParser {
 
   private static final String KEY_PREFIX = "org.apache.ibatis.parsing.PropertyParser.";
-  /**
-   * The special property key that indicate whether enable a default value on placeholder.
-   * <p>
-   *   The default value is {@code false} (indicate disable a default value on placeholder)
-   *   If you specify the {@code true}, you can specify key and default value on placeholder (e.g. {@code ${db.username:postgres}}).
-   * </p>
-   * @since 3.4.2
-   */
+
   public static final String KEY_ENABLE_DEFAULT_VALUE = KEY_PREFIX + "enable-default-value";
 
-  /**
-   * The special property key that specify a separator for key and default value on placeholder.
-   * <p>
-   *   The default separator is {@code ":"}.
-   * </p>
-   * @since 3.4.2
-   */
+
   public static final String KEY_DEFAULT_VALUE_SEPARATOR = KEY_PREFIX + "default-value-separator";
 
+  /**
+   * 是否开启默认值功能（默认不开启）。默认为 {@link #ENABLE_DEFAULT_VALUE}
+   */
   private static final String ENABLE_DEFAULT_VALUE = "false";
+
+  /**
+   * 默认值的分隔符（默认为“:”）。默认为 {@link #KEY_DEFAULT_VALUE_SEPARATOR} ，即 ":" 。
+   */
   private static final String DEFAULT_VALUE_SEPARATOR = ":";
 
   /**
@@ -64,68 +58,98 @@ public class PropertyParser {
    * @return String
    */
   public static String parse(String string, Properties variables) {
-    //1.创建VariableTokenHandler对象【todo 存在的意义】
+    //1.创建VariableTokenHandler对象----真实的动态参数handler对象
     VariableTokenHandler handler = new VariableTokenHandler(variables);
-    //2.创建parser解析对象
+    //2.创建parser解析对象 ----再上一层次的封装【通用的解析器】 important：这里说明，参数动态替换必须要使用${}
     GenericTokenParser parser = new GenericTokenParser("${", "}", handler);
     //3.解析
     return parser.parse(string);
   }
-  /**
-   * 测试结果： res = kylin
-   * 很明显 按照规则---将动态值kylin替换${zhuoqilin}（从XML获取的固定值）
-   */
-  public static void main(String []args){
-    Properties variables = new Properties();
-    variables.setProperty("username", "kylin");
-    String res = parse("${zhuoqilin}", variables);
-    System.out.println(res);
-  }
-
 
   /**
-   * 私有静态内部类
+   * 动态参数解析器的私有静态内部类——主要用于真实的解析token参数
+   * 静态内部类可以访问外部类的静态成员属性
    */
   private static class VariableTokenHandler implements TokenHandler {
+    /**
+     * 表示一组持久的属性——真实的动态值
+     */
     private final Properties variables;
+
+    /**
+     * 是否开启默认值 不开启
+     */
     private final boolean enableDefaultValue;
+
+    /**
+     * 默认分隔符 :
+     */
     private final String defaultValueSeparator;
 
+    /**
+     * 私有构造器---只能被父类所调用
+     */
     private VariableTokenHandler(Properties variables) {
       this.variables = variables;
+      //默认 false
       this.enableDefaultValue = Boolean.parseBoolean(getPropertyValue(KEY_ENABLE_DEFAULT_VALUE, ENABLE_DEFAULT_VALUE));
+      //默认 :
       this.defaultValueSeparator = getPropertyValue(KEY_DEFAULT_VALUE_SEPARATOR, DEFAULT_VALUE_SEPARATOR);
     }
 
+    /**
+     * 获取PropertyValue的值
+     * 如果调用者传入的Properties对象为空，则使用的是默认的值
+     * 如果不为空，则从Properties中取得
+     * @param key
+     * @param defaultValue
+     * @return String key对应的value值
+     */
     private String getPropertyValue(String key, String defaultValue) {
       return (variables == null) ? defaultValue : variables.getProperty(key, defaultValue);
     }
 
 
     /**
-     * todo 这个方法是用来干嘛的？
-     * @param
-     * @return
+     * 处理 token
+     * 逻辑：
+     *  1.判断variables（动态值）是否为空；空则无法替换，直接包装成原来的样子${content}返回；不为空则进入2
+     *  2.判断是否启动默认值方式，若不启动，则直接从variables中的key中拿取（variables自己保证有对应的值），若启动进入3
+     *  3.获取到分隔符（在构造器中确保了如果variables有则取variables的，否则使用默认:）,获取到${key:value}的value部分，
+     *  与variables进行比较，如果variables中有则替换，否则直接使用value
+     * @param content token字符串
+     * @return String 解析后的结果 todo 解析成什么样？
      */
     @Override
     public String handleToken(String content) {
+      //判断Properties 是否为空 不为空则将${content}进行替换(从Properties中取动态值)
       if (variables != null) {
         String key = content;
+        //是否开启默认值形式  开启则优先使用默认值--使用默认的分隔符
         if (enableDefaultValue) {
+          //默认的分割符 : ，也可以是Properties传入动态的分隔符（自己约定） indexOf如果不符合则返回-1
           final int separatorIndex = content.indexOf(defaultValueSeparator);
           String defaultValue = null;
+          //获取分割符前面的部分 key:value 也就是key
           if (separatorIndex >= 0) {
+            //说明有 key 分隔符 value的默认值
             key = content.substring(0, separatorIndex);
+            //默认值就是：xml中编写的 key:value的value  这个做法好处:如果没有动态值，那么就用我自己写好的key:value中的value
             defaultValue = content.substring(separatorIndex + defaultValueSeparator.length());
           }
+          //默认值不为空 则进行动态的比较，若存在动态值则使用动态值
           if (defaultValue != null) {
+            //从variables中取key的值，如果为空 则返回defaultValue【相当于是多一层保障吧】
             return variables.getProperty(key, defaultValue);
           }
         }
+        //不开启默认值形式【默认是不开启的】，直接判断Properties中是否含有该key，直接返回结果----最简单的一种
         if (variables.containsKey(key)) {
           return variables.getProperty(key);
         }
       }
+
+      //Properties对象 variables为空，无法进行动态值替换 返回${content}
       return "${" + content + "}";
     }
   }

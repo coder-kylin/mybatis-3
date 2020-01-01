@@ -21,9 +21,9 @@ package org.apache.ibatis.parsing;
 public interface TokenHandler {
 
   /**
-   *
-   * @param
-   * @return
+   * 处理 token
+   * @param content token字符串
+   * @return String 处理后的结果
    */
   String handleToken(String content);
 }

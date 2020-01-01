@@ -19,18 +19,23 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.util.Properties;
-
+/**
+ * 动态属性解析器测试
+ */
 class PropertyParserTest {
 
   @Test
   void replaceToVariableValue() {
+    //Properties是java的util类中的对象 设置参数（key-value形式  线程安全）
     Properties props = new Properties();
+    //使用使用默认值 传入true
     props.setProperty(PropertyParser.KEY_ENABLE_DEFAULT_VALUE, "true");
     props.setProperty("key", "value");
     props.setProperty("tableName", "members");
     props.setProperty("orderColumn", "member_id");
     props.setProperty("a:b", "c");
     Assertions.assertThat(PropertyParser.parse("${key}", props)).isEqualTo("value");
+    System.out.println(PropertyParser.parse("{key}", props)); //value
     Assertions.assertThat(PropertyParser.parse("${key:aaaa}", props)).isEqualTo("value");
     Assertions.assertThat(PropertyParser.parse("SELECT * FROM ${tableName:users} ORDER BY ${orderColumn:id}", props)).isEqualTo("SELECT * FROM members ORDER BY member_id");
 

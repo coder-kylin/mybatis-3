@@ -31,6 +31,9 @@ import org.junit.jupiter.api.Test;
 import org.w3c.dom.Document;
 import org.xml.sax.InputSource;
 
+/**
+ * 主要是XpathParser中各种构造器的测试
+ */
 class XPathParserTest {
   private String resource = "resources/nodelet_test.xml";
 
@@ -187,6 +190,7 @@ class XPathParserTest {
     assertEquals((Float) 5.8f, parser.evalFloat("/employee/height"));
     assertEquals((Double) 5.8d, parser.evalDouble("/employee/height"));
     assertEquals("${id_var}", parser.evalString("/employee/@id"));
+    System.out.println(parser.evalString("/employee/@id"));
     assertEquals(Boolean.TRUE, parser.evalBoolean("/employee/active"));
     assertEquals("<id>${id_var}</id>", parser.evalNode("/employee/@id").toString().trim());
     assertEquals(7, parser.evalNodes("/employee/*").size());
