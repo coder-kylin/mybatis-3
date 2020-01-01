@@ -18,10 +18,10 @@ package org.apache.ibatis.parsing;
 
 /**
  * 通用的 Token 解析器 备注：这里的token不是代表登录时候获取的token，似乎是${}这种东西
+ * 该类比较简单，3个成员变量以及一个全参构造器 还有一个parse解析方法
  * @author Clinton Begin
  */
 public class GenericTokenParser {
-
 
   /**
    * 前缀

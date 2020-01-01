@@ -25,8 +25,12 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * 通用解析器测试类
+ */
 class GenericTokenParserTest {
 
+  //这里是简化了真实解析的实现方式【毕竟通用解析器只是调用者，真实的解析不在它本身】
   public static class VariableTokenHandler implements TokenHandler {
     private Map<String, String> variables = new HashMap<>();
 
@@ -36,21 +40,24 @@ class GenericTokenParserTest {
 
     @Override
     public String handleToken(String content) {
+      System.out.println(content);
       return variables.get(content);
     }
   }
 
   @Test
   void shouldDemonstrateGenericTokenReplacement() {
-    GenericTokenParser parser = new GenericTokenParser("${", "}", new VariableTokenHandler(new HashMap<String, String>() {
-      {
-        put("first_name", "James");
-        put("initial", "T");
-        put("last_name", "Kirk");
-        put("var{with}brace", "Hiya");
-        put("", "");
-      }
-    }));
+    HashMap<String, String> variables = new HashMap<>();
+    variables.put("first_name", "James");
+    variables.put("initial", "T");
+    variables.put("last_name", "Kirk");
+    variables.put("var{with}brace", "Hiya");
+    variables.put("", "");
+    VariableTokenHandler handler = new VariableTokenHandler(variables);
+    GenericTokenParser parser = new GenericTokenParser("${", "}", handler);
+
+    System.out.println(parser.parse("${\\}")); //不知道为何都不进去解析的部分
+
 
     assertEquals("James T Kirk reporting.", parser.parse("${first_name} ${initial} ${last_name} reporting."));
     assertEquals("Hello captain James T Kirk", parser.parse("Hello captain ${first_name} ${initial} ${last_name}"));
@@ -91,7 +98,8 @@ class GenericTokenParserTest {
   void shouldParseFastOnJdk7u6() {
     Assertions.assertTimeout(Duration.ofMillis(1000), () -> {
       // issue #760
-      GenericTokenParser parser = new GenericTokenParser("${", "}", new VariableTokenHandler(new HashMap<String, String>() {
+      GenericTokenParser parser = new GenericTokenParser("${", "}", new VariableTokenHandler(
+        new HashMap<String, String>() {
         {
           put("first_name", "James");
           put("initial", "T");
@@ -101,14 +109,20 @@ class GenericTokenParserTest {
       }));
 
       StringBuilder input = new StringBuilder();
-      for (int i = 0; i < 10000; i++) {
+      for (int i = 0; i < 2; i++) {
         input.append("${first_name} ${initial} ${last_name} reporting. ");
       }
       StringBuilder expected = new StringBuilder();
-      for (int i = 0; i < 10000; i++) {
+      for (int i = 0; i < 2; i++) {
         expected.append("James T Kirk reporting. ");
       }
-      assertEquals(expected.toString(), parser.parse(input.toString()));
+      System.out.println("========");
+      System.out.println(input.toString());
+      System.out.println(expected.toString());
+      System.out.println("========");
+      System.out.println("====result======");
+      System.out.println(parser.parse(input.toString()));
+//      assertEquals(expected.toString(), parser.parse(input.toString()));
     });
   }
 

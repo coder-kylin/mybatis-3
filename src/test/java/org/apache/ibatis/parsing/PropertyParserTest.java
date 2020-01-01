@@ -20,7 +20,8 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Properties;
 /**
- * 动态属性解析器测试
+ * 动态属性解析器PropertyParser测试
+ * PropertyParser更像是一个Utils的方式使用，只有一个parser方法，但是这个parser方法内部做到了新建对象【内部类】以及解析的操作
  */
 class PropertyParserTest {
 
