@@ -46,7 +46,9 @@ import org.apache.ibatis.reflection.property.PropertyNamer;
  * 反射器，每个Reflector对象对应一个类；Reflector对象会缓存反射操作需要的信息：
  * 构造方法，属性名 get/set方法
  * todo 为什么没有其他的方法呢？ 难道这个反射只是反射最基础的bean类？
- *
+ * 我看里面的异常抛出的结果：很明显说的就是解析javaBean的
+ * 阅读源码学的： Mybatis的反射，是将javaBean中以get命名的方法，去掉get之后当成一个属性来看待的，这里就是为什么不建议
+ * 在命名的时候采用get方法，会出现异常
  * @author Clinton Begin
  */
 public class Reflector {
@@ -149,52 +151,78 @@ public class Reflector {
     Constructor<?>[] constructors = clazz.getDeclaredConstructors();
     //数组的流式， 过滤条件：构造器的参数parameterTypes为0【默认构造器不带参数】
     //如果存在这样的构造器，直接findAny().isPresent()如果存在，这设置上去即可
+    //todo 这里似乎没有判断构造器是否是私有的（之前的mybatis是有判断是否可修改访问类型）
     Arrays.stream(constructors).filter(constructor -> constructor.getParameterTypes().length == 0)
       .findAny().ifPresent(constructor -> this.defaultConstructor = constructor);
   }
 
   /**
    * todo 看看文档 关于Class的介绍
+   * 冲突的考虑：因为父类和子类可能存在定义相同的属性，并且都设置有get方法
    * 初始化getting方法
    * @param clazz
    */
   private void addGetMethods(Class<?> clazz) {
-    //todo 一个属性会存在多个get方法？  为什么要弄一个冲突的? 难道这里只是一个类似于基类的东西，不只是反射生成bean类？
+    //属性与其 getting 方法的映射。因为父类和子类都可能定义了相同属性的 getting 方法，所以 VALUE 会是个数组。
     Map<String, List<Method>> conflictingGetters = new HashMap<>(32);
     //这个类的前世今生的方法都被获取到了
     Method[] methods = getClassMethods(clazz);
     //get方法的判断条件：1.不存在参数 2.符合get方法的开头方式
+    //filter获取到的是所有方法参数为0并且符合以为get方法开头的所有方法集合
     Arrays.stream(methods).filter(m -> m.getParameterTypes().length == 0 && PropertyNamer.isGetter(m.getName()))
+      //添加到conflictingGetters中
+      //遍历上面获取的集合，每个方法都进行addMethodConflict方法调用
       .forEach(m -> addMethodConflict(conflictingGetters, PropertyNamer.methodToProperty(m.getName()), m));
 
-    //
+    //解决getting冲突方法 【冲突的原因：父类和子类可能有相同的属性，并且都设置有get方法（虽然这种情况在业务中不应该存在
+    // 但是代码层面上要考虑这种情况，避免这种情况的发生）】
     resolveGetterConflicts(conflictingGetters);
   }
 
+
+  /**
+   * 解决冲突的Getting方法
+   * 关键在于： value取谁
+   * Entry的学习
+   * @param conflictingGetters
+   */
   private void resolveGetterConflicts(Map<String, List<Method>> conflictingGetters) {
     for (Entry<String, List<Method>> entry : conflictingGetters.entrySet()) {
       Method winner = null;
       String propName = entry.getKey();
       boolean isAmbiguous = false;
+      //candidate 候选人
       for (Method candidate : entry.getValue()) {
+        //第一个value
         if (winner == null) {
           winner = candidate;
           continue;
         }
+        //获取winner的返回类型 以及当前candidate的返回类型 【正式的返回类型----全路径】
         Class<?> winnerType = winner.getReturnType();
         Class<?> candidateType = candidate.getReturnType();
+
+        //类型相同
         if (candidateType.equals(winnerType)) {
+          //如果当前的candidate不是boolean类型
           if (!boolean.class.equals(candidateType)) {
+            //是模糊不清的
             isAmbiguous = true;
             break;
+            //如果是boolean类型 并且方法名以is开头 你就赢了？
           } else if (candidate.getName().startsWith("is")) {
             winner = candidate;
           }
+          //父类.class.isAssignableFrom(子类.class)  判断是否是某个类的父类 【从父类角度】  你是不是我的子类
+          //子类实例 instanceof 父类类型  【判断子类实例是否是父类的类型 是否继承于它】  你是不是我的父类
         } else if (candidateType.isAssignableFrom(winnerType)) {
+          //说明 winnerType是candidateType的子类  赢的是儿子
           // OK getter type is descendant
         } else if (winnerType.isAssignableFrom(candidateType)) {
+          //说明candidateType是winnerType的子类  要让儿子赢 （子类更加的具体？）
           winner = candidate;
         } else {
+          //模糊不清的
           isAmbiguous = true;
           break;
         }
@@ -203,6 +231,12 @@ public class Reflector {
     }
   }
 
+  /**
+   * 添加get方法
+   * @param name 属性名
+   * @param method 方法实体
+   * @param isAmbiguous 是否模糊不清
+   */
   private void addGetMethod(String name, Method method, boolean isAmbiguous) {
     MethodInvoker invoker = isAmbiguous
         ? new AmbiguousMethodInvoker(method, MessageFormat.format(
@@ -223,13 +257,17 @@ public class Reflector {
   }
 
   /**
-   *
-   * @param
-   * @return
+   * 将方法添加到conflictingMethods中
+   * @param conflictingMethods 需要被放入的地方【学习到：将需要赋值的放在第一个位置】
+   * @param name  从方法名字中获取的属性名
+   * @param method  方法实体
    */
   private void addMethodConflict(Map<String, List<Method>> conflictingMethods, String name, Method method) {
+    //判断方法名是否合规
     if (isValidPropertyName(name)) {
+      //获取map中key为name的value【是一个list<Method>】
       List<Method> list = conflictingMethods.computeIfAbsent(name, k -> new ArrayList<>());
+      //往value中添加新的方法实体
       list.add(method);
     }
   }
@@ -355,11 +393,14 @@ public class Reflector {
    * because we want to look for private methods as well.
    *
    * 获取到该类的所有方法（注意：包括该类的父类，父类的父类……直到Object类）
+   * 如果遇到是子类已经重写的方法，则添加子类重写的方法，不理会父类的
    * @param clazz The class
    * @return An array containing all methods in this class
    */
   private Method[] getClassMethods(Class<?> clazz) {
     //方法名和 方法的映射 key为方法名字 value是方法method的映射
+    //key是方法的签名—— 返回类型#方法名:参数类型1,参数类型2....
+    //value是方法的实体
     Map<String, Method> uniqueMethods = new HashMap<>(64);
     //当前类
     Class<?> currentClass = clazz;
@@ -402,7 +443,7 @@ public class Reflector {
         // check to see if the method is already known
         // if it is known, then an extended class must have
         // overridden a method
-        //如果存在 则覆盖
+        //如果存在 则不处理---因为存在说明子类肯定拥有并且重写了【需要的是重写后的方法】
         if (!uniqueMethods.containsKey(signature)) {
           uniqueMethods.put(signature, currentMethod);
         }
@@ -436,10 +477,6 @@ public class Reflector {
     return sb.toString();
   }
   
-  public static void main(String []args){
-    Object obj = new Object();
-    System.out.println(obj.getClass().getName());
-  }
   /**
    * Checks whether can control member accessible.
    *
