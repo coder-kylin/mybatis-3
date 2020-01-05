@@ -20,6 +20,8 @@ import java.util.Locale;
 import org.apache.ibatis.reflection.ReflectionException;
 
 /**
+ * 该类相当于是一个util，用于判断方法名是否是某种规范类型，
+ * 比如说是get 就一定是get开头，set方法就是set开头
  * @author Clinton Begin
  */
 public final class PropertyNamer {
@@ -48,10 +50,26 @@ public final class PropertyNamer {
     return isGetter(name) || isSetter(name);
   }
 
+  /**
+   * 判断方法是不是get方法
+   * 1.是否以get开头
+   * 2.长度是否大于3
+   *
+   * 或者另外一种标准
+   * 1.是否是is开头
+   * 2.是否长度大于2
+   * @param name
+   * @return boolean
+   */
   public static boolean isGetter(String name) {
     return (name.startsWith("get") && name.length() > 3) || (name.startsWith("is") && name.length() > 2);
   }
 
+  /**
+   *
+   * @param
+   * @return
+   */
   public static boolean isSetter(String name) {
     return name.startsWith("set") && name.length() > 3;
   }
