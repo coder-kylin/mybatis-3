@@ -233,17 +233,20 @@ public class Reflector {
 
   /**
    * 添加get方法
+   * 初始化getMethods和getTypes
    * @param name 属性名
    * @param method 方法实体
    * @param isAmbiguous 是否模糊不清
    */
   private void addGetMethod(String name, Method method, boolean isAmbiguous) {
+    //如果是模糊不清的，创建一个模糊不清的Invoker  invoke——调用
     MethodInvoker invoker = isAmbiguous
         ? new AmbiguousMethodInvoker(method, MessageFormat.format(
             "Illegal overloaded getter method with ambiguous type for property ''{0}'' in class ''{1}''. This breaks the JavaBeans specification and can cause unpredictable results.",
             name, method.getDeclaringClass().getName()))
         : new MethodInvoker(method);
     getMethods.put(name, invoker);
+    //返回类型的解析
     Type returnType = TypeParameterResolver.resolveReturnType(method, type);
     getTypes.put(name, typeToClass(returnType));
   }
